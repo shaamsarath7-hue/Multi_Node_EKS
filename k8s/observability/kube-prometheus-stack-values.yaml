@@ -1,0 +1,83 @@
+# ---------------------------------------------------------------------------
+# Sized for a t3.medium (2 vCPU / 4 GiB) system node shared with CoreDNS,
+# metrics-server, and Cluster Autoscaler. No persistent storage (ephemeral
+# playground session) - dashboards/rules live in Git instead.
+# ---------------------------------------------------------------------------
+
+# EKS control plane (scheduler/controller-manager/etcd) is AWS-managed and
+# not reachable from worker nodes - scraping these would just fail forever.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+
+prometheusOperator:
+  resources:
+    requests: { cpu: 100m, memory: 200Mi }
+    limits: { cpu: 200m, memory: 300Mi }
+  nodeSelector:
+    nodegroup-type: system
+
+prometheus:
+  prometheusSpec:
+    retention: 6h
+    storageSpec: {}   # emptyDir - no PVC, ephemeral by design
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+      limits: { cpu: 500m, memory: 768Mi }
+    nodeSelector:
+      nodegroup-type: system
+    # Let Prometheus auto-discover PodMonitors/ServiceMonitors from any
+    # namespace, so Stage 6's sample workload gets picked up automatically
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+alertmanager:
+  alertmanagerSpec:
+    storage: {}
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { cpu: 100m, memory: 128Mi }
+    nodeSelector:
+      nodegroup-type: system
+  config:
+    route:
+      receiver: "default-null"
+      group_by: ["alertname", "namespace"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 3h
+    receivers:
+      - name: "default-null"
+        # No Slack/email wired up in this lab - alerts still fire and are
+        # visible in the Alertmanager UI, just not routed externally yet.
+
+grafana:
+  adminPassword: "ChangeMe123!"
+  persistence:
+    enabled: false
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 200m, memory: 256Mi }
+  nodeSelector:
+    nodegroup-type: system
+  service:
+    type: ClusterIP
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 50m, memory: 100Mi }
+    limits: { cpu: 100m, memory: 150Mi }
+  nodeSelector:
+    nodegroup-type: system
+
+# Runs on EVERY node (system + workload) by design - this is what lets us
+# see per-node CPU/memory in Grafana during Stage 6's load test, including
+# on newly-scaled-out workload nodes.
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 50m, memory: 50Mi }
+    limits: { cpu: 100m, memory: 100Mi }
