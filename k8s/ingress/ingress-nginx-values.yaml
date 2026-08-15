@@ -1,0 +1,14 @@
+# No external AWS Load Balancer - the KodeKloud playground blocks EKS from
+# provisioning one. We use ClusterIP and reach it via kubectl port-forward,
+# same pattern as Grafana in Stage 4. Fine for a lab/demo; a real prod
+# deployment on a full AWS account would use type: LoadBalancer instead.
+controller:
+  service:
+    type: ClusterIP
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 200m, memory: 256Mi }
+  nodeSelector:
+    nodegroup-type: system
+  admissionWebhooks:
+    enabled: true
