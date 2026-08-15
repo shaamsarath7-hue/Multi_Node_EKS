@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-apache
+  namespace: workloads
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: php-apache
+  template:
+    metadata:
+      labels:
+        app: php-apache
+    spec:
+      serviceAccountName: workload-sa
+      containers:
+        - name: php-apache
+          image: registry.k8s.io/hpa-example
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 500m
+              memory: 128Mi
+            limits:
+              cpu: 800m
+              memory: 256Mi
+      nodeSelector:
+        nodegroup-type: workload
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: php-apache
+  namespace: workloads
+spec:
+  selector:
+    app: php-apache
+  ports:
+    - port: 80
+      targetPort: 80
+
+---
+# min 2 so we start with headroom already using ~1 vCPU; max 8 so under
+# sustained load it will exceed what 1 workload node (t3.small, ~1.9 vCPU
+# allocatable) can hold, forcing Cluster Autoscaler to add the 2nd node.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: php-apache-hpa
+  namespace: workloads
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: php-apache
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
