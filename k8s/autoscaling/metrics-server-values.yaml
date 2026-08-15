@@ -1,0 +1,11 @@
+# Self-managed node kubelets on EKS commonly need this - kubelet certs aren't
+# always in the metrics-server's default trusted CA chain when nodes are
+# bootstrapped manually (as ours are) rather than via managed node groups.
+args:
+  - --kubelet-preferred-address-types=InternalIP
+  - --kubelet-insecure-tls
+
+# Keep this on the system node group - it's part of the platform's core
+# add-ons, not a scheduled workload.
+nodeSelector:
+  nodegroup-type: system

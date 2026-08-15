@@ -1,0 +1,26 @@
+autoDiscovery:
+  clusterName: multi-node-eks
+
+awsRegion: us-east-1
+
+rbac:
+  serviceAccount:
+    create: true
+    name: cluster-autoscaler
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::767397762089:role/multi-node-eks-cluster-autoscaler-irsa"
+
+extraArgs:
+  balance-similar-node-groups: true
+  skip-nodes-with-system-pods: false
+
+nodeSelector:
+  nodegroup-type: system
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 300Mi
+  requests:
+    cpu: 100m
+    memory: 300Mi
